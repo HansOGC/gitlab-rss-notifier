@@ -45,6 +45,7 @@ jobs:
         env:
           GMAIL_USERNAME: ${{ secrets.GMAIL_USERNAME }}  # Your Gmail email address from secrets.
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }} # Your Gmail App Password from secrets.
+          RECEIVER_EMAIL_ADDRESS: ${{ secrets.RECEIVER_EMAIL_ADDRESS }}
         run: python rss_reader.py
         shell: bash
 
