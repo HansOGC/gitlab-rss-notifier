@@ -1,0 +1,61 @@
+# .github/workflows/rss-notifier.yml
+
+name: Daily GitLab RSS Notifier
+
+on:
+  schedule:
+    # Runs everyday at 10:00 AM HKT (Hong Kong Time).
+    # HKT is UTC+8. So, 10:00 AM HKT is 02:00 AM UTC.
+    # The 'cron' syntax is 'minute hour day_of_month month day_of_week' (all in UTC).
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    # This allows you to manually trigger the workflow from the GitHub Actions tab in your repository.
+    # Useful for initial testing and debugging.
+
+jobs:
+  read_and_send_emails:
+    runs-on: ubuntu-latest # Specifies the operating system for the job to run on.
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4 # Action to check out your repository code.
+
+      - name: Set up Python
+        uses: actions/setup-python@v5 # Action to set up a Python environment.
+        with:
+          python-version: '3.x' # Use the latest Python 3 version available.
+
+      - name: Install Python dependencies
+        run: | # Use a multi-line script to ensure pip is updated and then install feedparser.
+          python -m pip install --upgrade pip
+          pip install feedparser
+        shell: bash # Explicitly use bash shell.
+
+      - name: Configure Git for committing changes
+        # These commands set the identity for Git commits made by the GitHub Actions bot.
+        # This is necessary for the 'git commit' and 'git push' commands to work later.
+        run: |
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+        shell: bash
+
+      - name: Run RSS reader script
+        # This step executes your Python script.
+        # Environment variables are passed using the 'env' block, securely pulling values from GitHub Secrets.
+        env:
+          GMAIL_USERNAME: ${{ secrets.GMAIL_USERNAME }}  # Your Gmail email address from secrets.
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }} # Your Gmail App Password from secrets.
+        run: python rss_reader.py
+        shell: bash
+
+      - name: Commit updated last_sent_guids.json
+        # This step adds and commits the updated JSON file to your repository.
+        # The '|| echo "No changes to commit"' part prevents the workflow from failing
+        # if the script didn't find new RSS entries and thus didn't modify last_sent_guids.json.
+        run: |
+          git add last_sent_guids.json
+          git commit -m "Update last sent GUIDs [skip ci]" || echo "No changes to commit"
+          git push
+        shell: bash
+        # A note on [skip ci]: Adding '[skip ci]' to the commit message prevents this commit
+        # from triggering another workflow run, which is desirable here to avoid infinite loops.
