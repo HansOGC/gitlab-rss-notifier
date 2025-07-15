@@ -16,7 +16,7 @@ GITLAB_RELEASES_FEED = "https://about.gitlab.com/releases.xml"
 # Email Configuration (these will be loaded from GitHub Secrets as environment variables)
 SENDER_EMAIL = os.environ.get('GMAIL_USERNAME')
 SENDER_PASSWORD = os.environ.get('GMAIL_APP_PASSWORD')
-RECEIVER_EMAIL = SENDER_EMAIL # Set this to your preferred receiver email, can be different from sender
+RECEIVER_EMAIL = os.environ.get('RECEIVER_EMAIL_ADDRESS')
 
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587 # For TLS
