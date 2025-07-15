@@ -4,10 +4,10 @@ name: Daily GitLab RSS Notifier
 
 on:
   schedule:
-    # Runs everyday at 10:00 AM HKT (Hong Kong Time).
-    # HKT is UTC+8. So, 10:00 AM HKT is 02:00 AM UTC.
+    # Runs everyday at 08:00 AM HKT (Hong Kong Time).
+    # HKT is UTC+8. So, 08:00 AM HKT is 00:00 AM UTC.
     # The 'cron' syntax is 'minute hour day_of_month month day_of_week' (all in UTC).
-    - cron: '0 2 * * *'
+    - cron: '0 0 * * *'
   workflow_dispatch:
     # This allows you to manually trigger the workflow from the GitHub Actions tab in your repository.
     # Useful for initial testing and debugging.
