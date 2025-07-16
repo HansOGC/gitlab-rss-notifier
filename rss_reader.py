@@ -17,6 +17,11 @@ GITLAB_RELEASES_FEED = "https://about.gitlab.com/releases.xml"
 SENDER_EMAIL = os.environ.get('GMAIL_USERNAME')
 SENDER_PASSWORD = os.environ.get('GMAIL_APP_PASSWORD')
 RECEIVER_EMAIL = os.environ.get('RECEIVER_EMAIL_ADDRESS')
+# Convert the semicolon-separated string into a list of email addresses
+if RECEIVER_EMAILS_STR:
+    RECEIVER_EMAILS = [email.strip() for email in RECEIVER_EMAILS_STR.split(';') if email.strip()] # <--- CHANGED HERE
+else:
+    RECEIVER_EMAILS = [] # Empty list if variable is not set
 
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587 # For TLS
