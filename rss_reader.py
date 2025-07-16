@@ -24,6 +24,80 @@ SMTP_PORT = 587 # For TLS
 # File to store the last sent entry GUIDs (this file will be committed and updated)
 LAST_SENT_FILE = "last_sent_guids.json"
 
+# --- Common Email HTML Styles ---
+# Basic inline styles for email client compatibility
+# These styles are embedded directly into the HTML email for maximum compatibility.
+EMAIL_STYLES = """
+    <style>
+        /* General body styles for readability */
+        body { 
+            font-family: Arial, sans-serif; 
+            font-size: 14px; 
+            line-height: 1.6; 
+            color: #333; 
+            margin: 0; 
+            padding: 0; 
+            background-color: #f4f4f4; 
+        }
+        /* Main container for the email content */
+        .container { 
+            max-width: 600px; 
+            margin: 20px auto; 
+            padding: 20px; 
+            border: 1px solid #eee; 
+            border-radius: 8px; /* Slightly more rounded corners */
+            background-color: #fff; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1); /* Subtle shadow for depth */
+        }
+        /* Heading styles */
+        h2 { 
+            color: #0056b3; 
+            font-size: 20px; 
+            margin-top: 0; 
+            margin-bottom: 15px; 
+            border-bottom: 2px solid #0056b3; /* Underline for headings */
+            padding-bottom: 5px;
+        }
+        /* Paragraph spacing */
+        p { 
+            margin-bottom: 10px; 
+        }
+        /* Link styles */
+        a { 
+            color: #007bff; 
+            text-decoration: none; 
+        }
+        a:hover { 
+            text-decoration: underline; 
+        }
+        /* Date specific styling */
+        .date { 
+            font-size: 12px; 
+            color: #777; 
+            margin-bottom: 15px;
+            display: block; /* Ensures it takes its own line */
+        }
+        /* Content description area */
+        .description-content { 
+            margin-top: 20px; 
+            padding: 15px; 
+            background-color: #f9f9f9; 
+            border: 1px solid #ddd; 
+            border-radius: 4px; 
+            line-height: 1.5; /* Improve readability of main content */
+        }
+        /* Footer styling */
+        .footer { 
+            font-size: 12px; 
+            color: #555; 
+            margin-top: 25px; 
+            border-top: 1px solid #eee; 
+            padding-top: 15px; 
+            text-align: center; /* Center footer text */
+        }
+    </style>
+"""
+
 # --- Helper Functions ---
 def get_last_sent_data():
     """
@@ -133,17 +207,32 @@ def main():
 
     if latest_security_entry:
         subject = f"[GitLab Security] {latest_security_entry.title}"
+        # *** IMPORTANT CHANGE HERE: Using latest_security_entry.content[0].value ***
         body = f"""
-        <html>
-        <body>
-            <p><strong>New GitLab Security Release:</strong></p>
-            <p><a href='{latest_security_entry.link}'>{latest_security_entry.title}</a></p>
-            <p>Published: {latest_security_entry.published}</p>
-            <hr>
-            <div>{latest_security_entry.summary}</div>
-            <p>Read more: <a href='{latest_security_entry.link}'>{latest_security_entry.link}</a></p>
-        </body>
-        </html>
+      <!DOCTYPE html>
+      <html>
+      <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <title>GitLab Security Release Notification</title>
+          {EMAIL_STYLES}
+      </head>
+      <body>
+          <div class="container">
+              <h2>New GitLab Security Release:</h2>
+              <p><strong><a href='{latest_security_entry.link}'>{latest_security_entry.title}</a></strong></p>
+              <p class="date">Published: {latest_security_entry.published}</p>
+
+              <div class="description-content">
+                  {latest_security_entry.content[0].value if latest_security_entry.content else 'No detailed content available.'}
+              </div>
+
+              <p>Read more: <a href='{latest_security_entry.link}'>{latest_security_entry.link}</a></p>
+
+              <p class="footer">This email was sent by your GitLab RSS Notifier via GitHub Actions.</p>
+          </div>
+      </body>
+      </html>
         """
         if send_email(subject, body):
             updated_data["security"] = new_security_guid
@@ -160,17 +249,32 @@ def main():
 
     if latest_release_entry:
         subject = f"[GitLab Release] {latest_release_entry.title}"
+        # *** IMPORTANT CHANGE HERE: Using latest_release_entry.content[0].value ***
         body = f"""
-        <html>
-        <body>
-            <p><strong>New GitLab Release:</strong></p>
-            <p><a href='{latest_release_entry.link}'>{latest_release_entry.title}</a></p>
-            <p>Published: {latest_release_entry.published}</p>
-            <hr>
-            <div>{latest_release_entry.summary}</div>
-            <p>Read more: <a href='{latest_release_entry.link}'>{latest_release_entry.link}</a></p>
-        </body>
-        </html>
+      <!DOCTYPE html>
+      <html>
+      <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <title>GitLab General Release Notification</title>
+          {EMAIL_STYLES}
+      </head>
+      <body>
+          <div class="container">
+              <h2>New GitLab Release:</h2>
+              <p><strong><a href='{latest_release_entry.link}'>{latest_release_entry.title}</a></strong></p>
+              <p class="date">Published: {latest_release_entry.published}</p>
+
+              <div class="description-content">
+                  {latest_release_entry.content[0].value if latest_release_entry.content else 'No detailed content available.'}
+              </div>
+
+              <p>Read more: <a href='{latest_release_entry.link}'>{latest_release_entry.link}</a></p>
+
+              <p class="footer">This email was sent by your GitLab RSS Notifier via GitHub Actions.</p>
+          </div>
+      </body>
+      </html>
         """
         if send_email(subject, body):
             updated_data["releases"] = new_release_guid
