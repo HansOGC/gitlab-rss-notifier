@@ -13,20 +13,25 @@ from datetime import datetime
 GITLAB_SECURITY_FEED = "https://about.gitlab.com/security-releases.xml"
 GITLAB_RELEASES_FEED = "https://about.gitlab.com/releases.xml"
 
-# Email Configuration (these will be loaded from GitHub Secrets as environment variables)
+# Email Configuration (these will be loaded from GitHub Secrets/Variables as environment variables)
 SENDER_EMAIL = os.environ.get('GMAIL_USERNAME')
 SENDER_PASSWORD = os.environ.get('GMAIL_APP_PASSWORD')
-RECEIVER_EMAIL = os.environ.get('RECEIVER_EMAIL_ADDRESS')
+
+# Get receiver emails from environment variable string
+# This variable should be set in GitHub Variables (e.g., RECEIVER_EMAIL_ADDRESS: "email1@example.com; email2@example.com")
+RECEIVER_EMAILS_STR = os.environ.get('RECEIVER_EMAIL_ADDRESS')
+
 # Convert the semicolon-separated string into a list of email addresses
+# IMPORTANT: This line is changed to split by semicolon
 if RECEIVER_EMAILS_STR:
-    RECEIVER_EMAILS = [email.strip() for email in RECEIVER_EMAILS_STR.split(';') if email.strip()] # <--- CHANGED HERE
+    RECEIVER_EMAILS = [email.strip() for email in RECEIVER_EMAILS_STR.split(';') if email.strip()]
 else:
-    RECEIVER_EMAILS = [] # Empty list if variable is not set
+    RECEIVER_EMAILS = [] # Empty list if variable is not set or empty
 
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587 # For TLS
 
-# File to store the last sent entry GUIDs (this file will be committed and updated)
+# File to store the last sent entry GUIDs (this file will be committed and updated by the workflow)
 LAST_SENT_FILE = "last_sent_guids.json"
 
 # --- Common Email HTML Styles ---
@@ -35,69 +40,69 @@ LAST_SENT_FILE = "last_sent_guids.json"
 EMAIL_STYLES = """
     <style>
         /* General body styles for readability */
-        body { 
-            font-family: Arial, sans-serif; 
-            font-size: 14px; 
-            line-height: 1.6; 
-            color: #333; 
-            margin: 0; 
-            padding: 0; 
-            background-color: #f4f4f4; 
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
         }
         /* Main container for the email content */
-        .container { 
-            max-width: 600px; 
-            margin: 20px auto; 
-            padding: 20px; 
-            border: 1px solid #eee; 
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 20px;
+            border: 1px solid #eee;
             border-radius: 8px; /* Slightly more rounded corners */
-            background-color: #fff; 
+            background-color: #fff;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1); /* Subtle shadow for depth */
         }
         /* Heading styles */
-        h2 { 
-            color: #0056b3; 
-            font-size: 20px; 
-            margin-top: 0; 
-            margin-bottom: 15px; 
+        h2 {
+            color: #0056b3;
+            font-size: 20px;
+            margin-top: 0;
+            margin-bottom: 15px;
             border-bottom: 2px solid #0056b3; /* Underline for headings */
             padding-bottom: 5px;
         }
         /* Paragraph spacing */
-        p { 
-            margin-bottom: 10px; 
+        p {
+            margin-bottom: 10px;
         }
         /* Link styles */
-        a { 
-            color: #007bff; 
-            text-decoration: none; 
+        a {
+            color: #007bff;
+            text-decoration: none;
         }
-        a:hover { 
-            text-decoration: underline; 
+        a:hover {
+            text-decoration: underline;
         }
         /* Date specific styling */
-        .date { 
-            font-size: 12px; 
-            color: #777; 
+        .date {
+            font-size: 12px;
+            color: #777;
             margin-bottom: 15px;
             display: block; /* Ensures it takes its own line */
         }
         /* Content description area */
-        .description-content { 
-            margin-top: 20px; 
-            padding: 15px; 
-            background-color: #f9f9f9; 
-            border: 1px solid #ddd; 
-            border-radius: 4px; 
+        .description-content {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 4px;
             line-height: 1.5; /* Improve readability of main content */
         }
         /* Footer styling */
-        .footer { 
-            font-size: 12px; 
-            color: #555; 
-            margin-top: 25px; 
-            border-top: 1px solid #eee; 
-            padding-top: 15px; 
+        .footer {
+            font-size: 12px;
+            color: #555;
+            margin-top: 25px;
+            border-top: 1px solid #eee;
+            padding-top: 15px;
             text-align: center; /* Center footer text */
         }
     </style>
@@ -174,20 +179,26 @@ def send_email(subject, body):
         print("Email credentials (GMAIL_USERNAME or GMAIL_APP_PASSWORD) not set as environment variables.")
         print("Please ensure they are configured as GitHub Secrets.")
         return False
+    # Check if there are any receiver emails configured
+    if not RECEIVER_EMAILS:
+        print("No RECEIVER_EMAIL_ADDRESSes configured. Skipping email send.")
+        return False
 
     msg = MIMEMultipart()
     msg['From'] = SENDER_EMAIL
-    msg['To'] = RECEIVER_EMAIL
+    # Join the list of emails for the 'To' header
+    msg['To'] = ", ".join(RECEIVER_EMAILS) # Email headers often prefer commas, even if parsed by semicolon
     msg['Subject'] = subject
-    msg.attach(MIMEText(body, 'html')) # Use 'html' for rich text, 'plain' for simple text
+    msg.attach(MIMEText(body, 'html')) # Use 'html' for rich text
 
     try:
-        print(f"Attempting to send email with subject: '{subject}' to {RECEIVER_EMAIL}")
+        print(f"Attempting to send email with subject: '{subject}' to {', '.join(RECEIVER_EMAILS)}")
         server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
         server.starttls() # Secure the connection with TLS
         server.login(SENDER_EMAIL, SENDER_PASSWORD)
         text = msg.as_string()
-        server.sendmail(SENDER_EMAIL, RECEIVER_EMAIL, text)
+        # Pass the list of recipients to sendmail
+        server.sendmail(SENDER_EMAIL, RECEIVER_EMAILS, text)
         server.quit()
         print(f"Email sent successfully: '{subject}'")
         return True
@@ -212,7 +223,10 @@ def main():
 
     if latest_security_entry:
         subject = f"[GitLab Security] {latest_security_entry.title}"
-        # *** IMPORTANT CHANGE HERE: Using latest_security_entry.content[0].value ***
+        # Access the full HTML content from the 'content' field provided by feedparser
+        # This uses .content[0].value to get the HTML part of the RSS entry
+        html_content = latest_security_entry.content[0].value if latest_security_entry.content else 'No detailed content available.'
+        
         body = f"""
       <!DOCTYPE html>
       <html>
@@ -229,7 +243,7 @@ def main():
               <p class="date">Published: {latest_security_entry.published}</p>
 
               <div class="description-content">
-                  {latest_security_entry.content[0].value if latest_security_entry.content else 'No detailed content available.'}
+                  {html_content}
               </div>
 
               <p>Read more: <a href='{latest_security_entry.link}'>{latest_security_entry.link}</a></p>
@@ -254,7 +268,9 @@ def main():
 
     if latest_release_entry:
         subject = f"[GitLab Release] {latest_release_entry.title}"
-        # *** IMPORTANT CHANGE HERE: Using latest_release_entry.content[0].value ***
+        # Access the full HTML content from the 'content' field provided by feedparser
+        html_content = latest_release_entry.content[0].value if latest_release_entry.content else 'No detailed content available.'
+        
         body = f"""
       <!DOCTYPE html>
       <html>
@@ -271,7 +287,7 @@ def main():
               <p class="date">Published: {latest_release_entry.published}</p>
 
               <div class="description-content">
-                  {latest_release_entry.content[0].value if latest_release_entry.content else 'No detailed content available.'}
+                  {html_content}
               </div>
 
               <p>Read more: <a href='{latest_release_entry.link}'>{latest_release_entry.link}</a></p>
