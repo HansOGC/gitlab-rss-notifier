@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>GitLab General Release Notification</title>
+    <style>
+        /* General body styles for readability */
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        /* Main container for the email content */
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 20px;
+            border: 1px solid #eee;
+            border-radius: 8px; /* Slightly more rounded corners */
+            background-color: #fff;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1); /* Subtle shadow for depth */
+        }
+        /* Heading styles */
+        h2 {
+            color: #0056b3;
+            font-size: 20px;
+            margin-top: 0;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #0056b3; /* Underline for headings */
+            padding-bottom: 5px;
+        }
+        /* Paragraph spacing */
+        p {
+            margin-bottom: 10px;
+        }
+        /* Link styles */
+        a {
+            color: #007bff;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        /* Date specific styling */
+        .date {
+            font-size: 12px;
+            color: #777;
+            margin-bottom: 15px;
+            display: block; /* Ensures it takes its own line */
+        }
+        /* Content description area */
+        .description-content {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            line-height: 1.5; /* Improve readability of main content */
+        }
+        /* Footer styling */
+        .footer {
+            font-size: 12px;
+            color: #555;
+            margin-top: 25px;
+            border-top: 1px solid #eee;
+            padding-top: 15px;
+            text-align: center; /* Center footer text */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>New GitLab Release:</h2>
+        <p><strong><a href='{{LINK}}'>{{TITLE}}</a></strong></p>
+        <p class="date">Published: {{PUBLISHED_DATE}}</p>
+
+        <div class="description-content">
+            {{CONTENT}}
+        </div>
+
+        <p>Read more: <a href='{{LINK}}'>{{LINK}}</a></p>
+
+        <p class="footer">This email was sent by your GitLab RSS Notifier via GitHub Actions.</p>
+    </div>
+</body>
+</html>
