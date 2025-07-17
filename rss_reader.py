@@ -1,5 +1,3 @@
-# rss_reader.py
-
 import feedparser
 import os
 import smtplib
@@ -22,7 +20,6 @@ SENDER_PASSWORD = os.environ.get('GMAIL_APP_PASSWORD')
 RECEIVER_EMAILS_STR = os.environ.get('RECEIVER_EMAIL_ADDRESS')
 
 # Convert the semicolon-separated string into a list of email addresses
-# IMPORTANT: This line is changed to split by semicolon
 if RECEIVER_EMAILS_STR:
     RECEIVER_EMAILS = [email.strip() for email in RECEIVER_EMAILS_STR.split(';') if email.strip()]
 else:
@@ -34,79 +31,9 @@ SMTP_PORT = 587 # For TLS
 # File to store the last sent entry GUIDs (this file will be committed and updated by the workflow)
 LAST_SENT_FILE = "last_sent_guids.json"
 
-# --- Common Email HTML Styles ---
-# Basic inline styles for email client compatibility
-# These styles are embedded directly into the HTML email for maximum compatibility.
-EMAIL_STYLES = """
-    <style>
-        /* General body styles for readability */
-        body {
-            font-family: Arial, sans-serif;
-            font-size: 14px;
-            line-height: 1.6;
-            color: #333;
-            margin: 0;
-            padding: 0;
-            background-color: #f4f4f4;
-        }
-        /* Main container for the email content */
-        .container {
-            max-width: 600px;
-            margin: 20px auto;
-            padding: 20px;
-            border: 1px solid #eee;
-            border-radius: 8px; /* Slightly more rounded corners */
-            background-color: #fff;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1); /* Subtle shadow for depth */
-        }
-        /* Heading styles */
-        h2 {
-            color: #0056b3;
-            font-size: 20px;
-            margin-top: 0;
-            margin-bottom: 15px;
-            border-bottom: 2px solid #0056b3; /* Underline for headings */
-            padding-bottom: 5px;
-        }
-        /* Paragraph spacing */
-        p {
-            margin-bottom: 10px;
-        }
-        /* Link styles */
-        a {
-            color: #007bff;
-            text-decoration: none;
-        }
-        a:hover {
-            text-decoration: underline;
-        }
-        /* Date specific styling */
-        .date {
-            font-size: 12px;
-            color: #777;
-            margin-bottom: 15px;
-            display: block; /* Ensures it takes its own line */
-        }
-        /* Content description area */
-        .description-content {
-            margin-top: 20px;
-            padding: 15px;
-            background-color: #f9f9f9;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            line-height: 1.5; /* Improve readability of main content */
-        }
-        /* Footer styling */
-        .footer {
-            font-size: 12px;
-            color: #555;
-            margin-top: 25px;
-            border-top: 1px solid #eee;
-            padding-top: 15px;
-            text-align: center; /* Center footer text */
-        }
-    </style>
-"""
+# --- Template Configuration ---
+SECURITY_EMAIL_TEMPLATE = "security_email_template.html"
+RELEASE_EMAIL_TEMPLATE = "release_email_template.html"
 
 # --- Helper Functions ---
 def get_last_sent_data():
@@ -170,6 +97,17 @@ def fetch_latest_entry_if_new(feed_url, last_sent_guid_for_feed):
         print(f"Error fetching or parsing feed {feed_url}: {e}")
         return None, None
 
+def load_email_template(template_file):
+    """
+    Loads an HTML email template from a file.
+    """
+    try:
+        with open(template_file, 'r', encoding='utf-8') as f:
+            return f.read()
+    except FileNotFoundError:
+        print(f"Error: Email template file '{template_file}' not found.")
+        return None
+
 def send_email(subject, body):
     """
     Sends an email using Gmail's SMTP server.
@@ -187,7 +125,7 @@ def send_email(subject, body):
     msg = MIMEMultipart()
     msg['From'] = SENDER_EMAIL
     # Join the list of emails for the 'To' header
-    msg['To'] = ", ".join(RECEIVER_EMAILS) # Email headers often prefer commas, even if parsed by semicolon
+    msg['To'] = ", ".join(RECEIVER_EMAILS)
     msg['Subject'] = subject
     msg.attach(MIMEText(body, 'html')) # Use 'html' for rich text
 
@@ -215,6 +153,14 @@ def main():
 
     new_emails_sent_count = 0
 
+    # Load templates once
+    security_template = load_email_template(SECURITY_EMAIL_TEMPLATE)
+    release_template = load_email_template(RELEASE_EMAIL_TEMPLATE)
+
+    if not security_template or not release_template:
+        print("Could not load one or more email templates. Exiting.")
+        return
+
     # --- Process GitLab Security Releases Feed ---
     print("\n--- Checking GitLab Security Releases ---")
     latest_security_entry, new_security_guid = fetch_latest_entry_if_new(
@@ -223,36 +169,14 @@ def main():
 
     if latest_security_entry:
         subject = f"[GitLab Security] {latest_security_entry.title}"
-        # Access the full HTML content from the 'content' field provided by feedparser
-        # This uses .content[0].value to get the HTML part of the RSS entry
         html_content = latest_security_entry.content[0].value if latest_security_entry.content else 'No detailed content available.'
-        
-        body = f"""
-      <!DOCTYPE html>
-      <html>
-      <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1">
-          <title>GitLab Security Release Notification</title>
-          {EMAIL_STYLES}
-      </head>
-      <body>
-          <div class="container">
-              <h2>New GitLab Security Release:</h2>
-              <p><strong><a href='{latest_security_entry.link}'>{latest_security_entry.title}</a></strong></p>
-              <p class="date">Published: {latest_security_entry.published}</p>
 
-              <div class="description-content">
-                  {html_content}
-              </div>
+        # Populate the template
+        body = security_template.replace('{{TITLE}}', latest_security_entry.title) \
+                                .replace('{{LINK}}', latest_security_entry.link) \
+                                .replace('{{PUBLISHED_DATE}}', latest_security_entry.published) \
+                                .replace('{{CONTENT}}', html_content)
 
-              <p>Read more: <a href='{latest_security_entry.link}'>{latest_security_entry.link}</a></p>
-
-              <p class="footer">This email was sent by your GitLab RSS Notifier via GitHub Actions.</p>
-          </div>
-      </body>
-      </html>
-        """
         if send_email(subject, body):
             updated_data["security"] = new_security_guid
             new_emails_sent_count += 1
@@ -268,35 +192,14 @@ def main():
 
     if latest_release_entry:
         subject = f"[GitLab Release] {latest_release_entry.title}"
-        # Access the full HTML content from the 'content' field provided by feedparser
         html_content = latest_release_entry.content[0].value if latest_release_entry.content else 'No detailed content available.'
-        
-        body = f"""
-      <!DOCTYPE html>
-      <html>
-      <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1">
-          <title>GitLab General Release Notification</title>
-          {EMAIL_STYLES}
-      </head>
-      <body>
-          <div class="container">
-              <h2>New GitLab Release:</h2>
-              <p><strong><a href='{latest_release_entry.link}'>{latest_release_entry.title}</a></strong></p>
-              <p class="date">Published: {latest_release_entry.published}</p>
 
-              <div class="description-content">
-                  {html_content}
-              </div>
+        # Populate the template
+        body = release_template.replace('{{TITLE}}', latest_release_entry.title) \
+                               .replace('{{LINK}}', latest_release_entry.link) \
+                               .replace('{{PUBLISHED_DATE}}', latest_release_entry.published) \
+                               .replace('{{CONTENT}}', html_content)
 
-              <p>Read more: <a href='{latest_release_entry.link}'>{latest_release_entry.link}</a></p>
-
-              <p class="footer">This email was sent by your GitLab RSS Notifier via GitHub Actions.</p>
-          </div>
-      </body>
-      </html>
-        """
         if send_email(subject, body):
             updated_data["releases"] = new_release_guid
             new_emails_sent_count += 1
